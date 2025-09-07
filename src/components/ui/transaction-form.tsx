@@ -13,31 +13,21 @@ import {
 } from "./select";
 import { CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
+import { TransactionFormData } from "@/types/transaction";
 
-export interface SingleTransactionFormData {
-  name: string;
-  amount: number;
-  from: string;
-  to: string;
-  type: "income" | "expense";
-  category: string;
-  transactionDate: Date;
-  notes: string;
-  tags: string[];
-}
+export type { TransactionFormData as SingleTransactionFormData } from "@/types/transaction";
 
 interface SingleTransactionFormProps {
-  onSubmit?: (data: SingleTransactionFormData) => void;
+  onSubmit?: (data: TransactionFormData) => void;
   onCancel?: () => void;
-  initialData?: Partial<SingleTransactionFormData>;
+  initialData?: Partial<TransactionFormData>;
 }
 
 export function SingleTransactionForm({ onSubmit, onCancel, initialData }: SingleTransactionFormProps) {
-  const [formData, setFormData] = useState<SingleTransactionFormData>({
+  const [formData, setFormData] = useState<TransactionFormData>({
     name: initialData?.name || "",
     amount: initialData?.amount || 0,
-    from: initialData?.from || "",
-    to: initialData?.to || "",
+    account: initialData?.account || "",
     type: initialData?.type || "expense",
     category: initialData?.category || "",
     transactionDate: initialData?.transactionDate || new Date(),
@@ -46,8 +36,25 @@ export function SingleTransactionForm({ onSubmit, onCancel, initialData }: Singl
   });
 
   const [tagInput, setTagInput] = useState("");
+  const [categoryInput, setCategoryInput] = useState(initialData?.category || "");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [categories, setCategories] = useState([
+    "Food & Dining",
+    "Transportation",
+    "Shopping",
+    "Entertainment",
+    "Bills & Utilities",
+    "Healthcare",
+    "Education",
+    "Travel",
+    "Personal Care",
+    "Gifts & Donations",
+    "Investments",
+    "Business",
+    "Other",
+  ]);
 
-  const handleInputChange = (field: keyof SingleTransactionFormData, value: any) => {
+  const handleInputChange = (field: keyof TransactionFormData, value: string | number | Date | string[]) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -71,6 +78,35 @@ export function SingleTransactionForm({ onSubmit, onCancel, initialData }: Singl
     );
   };
 
+  const handleCategoryInputChange = (value: string) => {
+    setCategoryInput(value);
+    setShowCategoryDropdown(value.length > 0);
+  };
+
+  const handleCategorySelect = (category: string) => {
+    handleInputChange("category", category);
+    setCategoryInput(category);
+    setShowCategoryDropdown(false);
+  };
+
+  const handleCreateCategory = (newCategory: string) => {
+    const trimmedCategory = newCategory.trim();
+    if (trimmedCategory && !categories.includes(trimmedCategory)) {
+      setCategories(prev => [...prev, trimmedCategory]);
+    }
+    handleInputChange("category", trimmedCategory);
+    setCategoryInput(trimmedCategory);
+    setShowCategoryDropdown(false);
+  };
+
+  const filteredCategories = categories.filter(category =>
+    category.toLowerCase().includes(categoryInput.toLowerCase())
+  );
+
+  const exactMatch = categories.find(category => 
+    category.toLowerCase() === categoryInput.toLowerCase()
+  );
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit?.(formData);
@@ -80,8 +116,7 @@ export function SingleTransactionForm({ onSubmit, onCancel, initialData }: Singl
     setFormData({
       name: "",
       amount: 0,
-      from: "",
-      to: "",
+      account: "",
       type: "expense",
       category: "",
       transactionDate: new Date(),
@@ -89,23 +124,9 @@ export function SingleTransactionForm({ onSubmit, onCancel, initialData }: Singl
       tags: [],
     });
     setTagInput("");
+    setCategoryInput("");
+    setShowCategoryDropdown(false);
   };
-
-  const categories = [
-    "Food & Dining",
-    "Transportation",
-    "Shopping",
-    "Entertainment",
-    "Bills & Utilities",
-    "Healthcare",
-    "Education",
-    "Travel",
-    "Personal Care",
-    "Gifts & Donations",
-    "Investments",
-    "Business",
-    "Other",
-  ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6">
@@ -164,51 +185,79 @@ export function SingleTransactionForm({ onSubmit, onCancel, initialData }: Singl
           </Select>
         </div>
 
-        {/* Category */}
-        <div className="space-y-2">
+        {/* Category - Autocomplete Input */}
+        <div className="space-y-2 relative">
           <Label htmlFor="category">Category</Label>
-          <Select
-            name="category"
-            value={formData.category}
-            onValueChange={(value) => handleInputChange("category", value)}
-          >
-            <SelectTrigger id="category">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* From */}
-        <div className="space-y-2">
-          <Label htmlFor="from">From Account/Source</Label>
           <Input
-            id="from"
-            name="from"
+            id="category"
+            name="category"
             type="text"
-            placeholder="Source account or person"
-            value={formData.from}
-            onChange={(e) => handleInputChange("from", e.target.value)}
+            placeholder="Type or select a category"
+            value={categoryInput}
+            onChange={(e) => handleCategoryInputChange(e.target.value)}
+            onFocus={() => setShowCategoryDropdown(categoryInput.length > 0)}
+            onBlur={() => {
+              // Delay hiding dropdown to allow clicking on options
+              setTimeout(() => setShowCategoryDropdown(false), 200);
+            }}
             autoComplete="off"
           />
+          
+          {/* Dropdown with suggestions and create option */}
+          {showCategoryDropdown && (
+            <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-48 overflow-auto">
+              {filteredCategories.length > 0 && (
+                <>
+                  {filteredCategories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      className="w-full px-3 py-2 text-left hover:bg-muted focus:bg-muted focus:outline-none text-foreground"
+                      onClick={() => handleCategorySelect(category)}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </>
+              )}
+              
+              {/* Create new category option */}
+              {categoryInput.trim() && !exactMatch && (
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-left hover:bg-primary/10 focus:bg-primary/10 focus:outline-none text-primary border-t border-border"
+                  onClick={() => handleCreateCategory(categoryInput)}
+                >
+                  Create "{categoryInput}"
+                </button>
+              )}
+              
+              {/* No results message */}
+              {filteredCategories.length === 0 && !categoryInput.trim() && (
+                <div className="px-3 py-2 text-muted-foreground text-sm">
+                  Start typing to see suggestions
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* To */}
+        {/* Account - Dynamic label based on transaction type */}
         <div className="space-y-2">
-          <Label htmlFor="to">To Account/Destination</Label>
+          <Label htmlFor="account">
+            {formData.type === "expense" ? "To" : "From"}
+          </Label>
           <Input
-            id="to"
-            name="to"
+            id="account"
+            name="account"
             type="text"
-            placeholder="Destination account or person"
-            value={formData.to}
-            onChange={(e) => handleInputChange("to", e.target.value)}
+            placeholder={
+              formData.type === "expense" 
+                ? "Where the money went (account, person, etc.)" 
+                : "Where the money came from (account, person, etc.)"
+            }
+            value={formData.account}
+            onChange={(e) => handleInputChange("account", e.target.value)}
             autoComplete="off"
           />
         </div>

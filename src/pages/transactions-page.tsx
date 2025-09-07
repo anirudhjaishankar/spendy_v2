@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { DatePickerWithRange } from "@/components/date-range-picker";
 import {
   SingleTransactionForm,
   type SingleTransactionFormData,
 } from "@/components/ui/transaction-form";
+import { Transaction, TransactionFormData } from "@/types/transaction";
+import { TransactionsDataTable } from "@/components/transactions-data-table";
 import {
   Dialog,
   DialogContent,
@@ -14,23 +17,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload } from "lucide-react";
-// import { DataTable } from "@/components/data-table";
-// import data from "@/app/dashboard/data.json";
 
 export default function TransactionsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const handleFormSubmit = (data: SingleTransactionFormData) => {
-    console.log("Transaction data:", data);
-    // TODO: Handle form submission (e.g., save to backend)
+  const handleFormSubmit = (data: TransactionFormData) => {
+    const newTransaction: Transaction = {
+      id: crypto.randomUUID(),
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    setTransactions(prev => [newTransaction, ...prev]);
+    console.log("Transaction added:", newTransaction);
     setIsDialogOpen(false);
   };
 
@@ -55,52 +59,54 @@ export default function TransactionsPage() {
 
   return (
     <div className="px-4 lg:px-6">
-      <h2 className="text-3xl font-bold py-2">Transactions</h2>
-      <div className="flex w-full py-2 justify-between">
-        <Button onClick={() => setIsDialogOpen(true)}>
-          Add Transaction
-        </Button>
+      <div className="flex justify-between items-center py-2">
+        <h2 className="text-3xl font-bold">Transactions</h2>
+        <Button onClick={() => setIsDialogOpen(true)}>Add Transaction</Button>
+      </div>
+      <Separator />
+      <div className="flex w-full py-2 mt-1 justify-end">
         <DatePickerWithRange />
       </div>
 
+      {/* Transactions Data Table */}
+      <div className="mt-6">
+        <TransactionsDataTable data={transactions} />
+      </div>
+
       {/* Transaction Dialog with Tabs */}
-      <Dialog 
-        open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen}
-      >
-        <DialogContent 
-          className="max-w-4xl max-h-[90vh] overflow-y-auto"
-        >
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Transaction</DialogTitle>
             <DialogDescription>
-              Choose to add a single transaction or upload multiple transactions.
+              Choose to add a single transaction or upload multiple
+              transactions.
             </DialogDescription>
           </DialogHeader>
-          
+
           <Tabs defaultValue="single" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="single">Single Transaction</TabsTrigger>
               <TabsTrigger value="bulk">Bulk Upload</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="single" className="mt-4">
               <SingleTransactionForm
                 onSubmit={handleFormSubmit}
                 onCancel={handleFormCancel}
               />
             </TabsContent>
-            
+
             <TabsContent value="bulk" className="mt-4">
               <div className="space-y-6 p-6">
                 <div className="space-y-2">
                   <Label htmlFor="file-upload">Upload Transactions File</Label>
                   <p className="text-sm text-muted-foreground">
-                    Upload a CSV or Excel file containing multiple transactions. 
+                    Upload a CSV or Excel file containing multiple transactions.
                     Supported formats: .csv, .xlsx, .xls
                   </p>
                 </div>
-                
+
                 <div className="space-y-4">
                   <Input
                     id="file-upload"
@@ -109,18 +115,19 @@ export default function TransactionsPage() {
                     onChange={handleFileChange}
                     className="cursor-pointer"
                   />
-                  
+
                   {selectedFile && (
                     <div className="p-3 bg-muted rounded-md">
                       <p className="text-sm">
-                        Selected file: <span className="font-medium">{selectedFile.name}</span>
+                        Selected file:{" "}
+                        <span className="font-medium">{selectedFile.name}</span>
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Size: {(selectedFile.size / 1024).toFixed(2)} KB
                       </p>
                     </div>
                   )}
-                  
+
                   <div className="flex justify-end gap-3 pt-4">
                     <Button
                       type="button"
