@@ -25,7 +25,7 @@ export function NavMain({
     items?: any;
   }[];
 }) {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
   return (
     <>
       {items.map((item) => (
@@ -49,11 +49,14 @@ export function NavMain({
                   <SidebarMenuSub>
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild>
-                          <a href={subItem.url}>
-                            {subItem.icon && <subItem.icon />}
-                            <span>{subItem.title}</span>
-                          </a>
+                        <SidebarMenuSubButton
+                          onClick={() => {
+                            console.log(subItem.path);
+                            navigate(subItem.path);
+                          }}
+                        >
+                          {subItem.icon && <subItem.icon />}
+                          <span>{subItem.title}</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}
@@ -66,7 +69,8 @@ export function NavMain({
               <SidebarMenuButton
                 tooltip={item.title}
                 onClick={() => {
-                  // navigate(item.path);
+                  console.log(item.path);
+                  navigate(item.path);
                 }}
               >
                 {item.icon && <item.icon />}

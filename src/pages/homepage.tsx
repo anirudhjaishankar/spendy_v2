@@ -2,6 +2,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { BrowserRouter, useRoutes, Outlet } from "react-router-dom";
 import TransactionPage from "./finance-page";
+import Error404 from "./error-404";
 
 // Define routes configuration
 const routesConfig = [
@@ -10,11 +11,15 @@ const routesConfig = [
     element: <PageLayout />,
     children: [
       {
-        path: "/finance/transaction",
+        path: "/finance/transactions",
         index: true,
         element: <TransactionPage />,
       },
     ],
+  },
+  {
+    path: "*",
+    element: <Error404 />,
   },
 ];
 
