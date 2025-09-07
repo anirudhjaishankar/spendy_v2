@@ -4,10 +4,11 @@ import { Separator } from "@/components/ui/separator";
 import { Transaction, TransactionFormData } from "@/types/transaction";
 import { TransactionsDataTable } from "@/components/transactions-data-table";
 import { TransactionsDialog } from "@/components/transactions-dialog";
+import { useTransactionStore } from "@/store/transaction-store";
 
 export default function TransactionsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const { addTransaction } = useTransactionStore();
 
   const handleTransactionSubmit = (data: TransactionFormData) => {
     const newTransaction: Transaction = {
@@ -17,8 +18,10 @@ export default function TransactionsPage() {
       updatedAt: new Date(),
     };
 
-    setTransactions((prev) => [newTransaction, ...prev]);
-    console.log("Transaction added:", newTransaction);
+    addTransaction(newTransaction);
+    
+    // Log the entire store state after adding transaction
+    console.log("Transaction added - Store state:", useTransactionStore.getState());
   };
 
   return (
@@ -31,7 +34,7 @@ export default function TransactionsPage() {
 
       {/* Transactions Data Table */}
       <div className="mt-6">
-        <TransactionsDataTable data={transactions} />
+        <TransactionsDataTable />
       </div>
 
       <TransactionsDialog

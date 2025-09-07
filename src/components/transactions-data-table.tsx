@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/table";
 import { Transaction } from "@/types/transaction";
 import { DatePickerWithRange } from "@/components/date-range-picker";
+import { useTransactions, useTransactionStore } from "@/store/transaction-store";
 
 const columns: ColumnDef<Transaction>[] = [
   {
@@ -246,11 +247,11 @@ const columns: ColumnDef<Transaction>[] = [
   },
 ];
 
-interface TransactionsDataTableProps {
-  data: Transaction[];
-}
-
-export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
+export function TransactionsDataTable() {
+  // Get transactions and search state from Zustand store
+  const data = useTransactions();
+  const search = useTransactionStore((state) => state.search);
+  const setSearch = useTransactionStore((state) => state.setSearch);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -288,8 +289,29 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
     }
   }, [sortBy, sortOrder]);
 
+  // Custom filtering logic for multi-field search
+  const filteredData = React.useMemo(() => {
+    if (!search.trim()) return data;
+    
+    const searchLower = search.toLowerCase();
+    return data.filter((transaction) => {
+      // Search in name
+      const nameMatch = transaction.name.toLowerCase().includes(searchLower);
+      
+      // Search in category
+      const categoryMatch = transaction.category.toLowerCase().includes(searchLower);
+      
+      // Search in tags
+      const tagsMatch = transaction.tags.some(tag => 
+        tag.toLowerCase().includes(searchLower)
+      );
+      
+      return nameMatch || categoryMatch || tagsMatch;
+    });
+  }, [data, search]);
+
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -311,11 +333,9 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
     <div className="w-full">
       <div className="flex items-center justify-between py-4">
         <Input
-          placeholder="Search transactions..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
-          }
+          placeholder="Search transactions by name, category, or tags..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
           className="max-w-sm"
         />
         
