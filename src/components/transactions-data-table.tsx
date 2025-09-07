@@ -11,13 +11,12 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { Filter, MoreHorizontal, SortAsc } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -25,6 +24,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -34,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Transaction } from "@/types/transaction";
+import { DatePickerWithRange } from "@/components/date-range-picker";
 
 const columns: ColumnDef<Transaction>[] = [
   {
@@ -63,17 +77,7 @@ const columns: ColumnDef<Transaction>[] = [
   },
   {
     accessorKey: "name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "Name",
     cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
   },
   {
@@ -107,18 +111,7 @@ const columns: ColumnDef<Transaction>[] = [
   },
   {
     accessorKey: "amount",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="justify-end"
-        >
-          Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: () => <div className="text-right">Amount</div>,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"));
       const type = row.getValue("type") as string;
@@ -143,17 +136,7 @@ const columns: ColumnDef<Transaction>[] = [
   },
   {
     accessorKey: "transactionDate",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "Date",
     cell: ({ row }) => {
       const date = row.getValue("transactionDate") as Date;
       return <div>{date.toLocaleDateString()}</div>;
@@ -180,6 +163,51 @@ const columns: ColumnDef<Transaction>[] = [
             </span>
           )}
         </div>
+      );
+    },
+  },
+  {
+    accessorKey: "notes",
+    header: "Notes",
+    cell: ({ row }) => {
+      const notes = row.getValue("notes") as string;
+      const truncatedNotes = notes.length > 10 ? notes.substring(0, 10) + "..." : notes;
+      
+      if (!notes) {
+        return <span className="text-muted-foreground">—</span>;
+      }
+      
+      if (notes.length <= 10) {
+        return <span className="text-sm">{notes}</span>;
+      }
+      
+      const [isHovered, setIsHovered] = React.useState(false);
+      
+      return (
+        <Popover open={isHovered} onOpenChange={setIsHovered}>
+          <PopoverTrigger asChild>
+            <div
+              className="text-sm cursor-pointer hover:bg-muted/50 px-1 py-0.5 rounded"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              {truncatedNotes}
+            </div>
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-80" 
+            align="start"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            <div className="space-y-2">
+              <h4 className="font-medium">Transaction Notes</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {notes}
+              </p>
+            </div>
+          </PopoverContent>
+        </Popover>
       );
     },
   },
@@ -226,6 +254,39 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  
+  // Sort and Filter states
+  const [sortBy, setSortBy] = React.useState<string>("");
+  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
+  const [dateRange, setDateRange] = React.useState<{from?: Date, to?: Date}>({});
+
+  // Extract unique tags and categories from data
+  const allTags = React.useMemo(() => {
+    const tags = new Set<string>();
+    data.forEach(transaction => {
+      transaction.tags.forEach(tag => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, [data]);
+
+  const allCategories = React.useMemo(() => {
+    const categories = new Set<string>();
+    data.forEach(transaction => {
+      categories.add(transaction.category);
+    });
+    return Array.from(categories).sort();
+  }, [data]);
+
+  // Apply sorting when sortBy or sortOrder changes
+  React.useEffect(() => {
+    if (sortBy) {
+      setSorting([{ id: sortBy, desc: sortOrder === "desc" }]);
+    } else {
+      setSorting([]);
+    }
+  }, [sortBy, sortOrder]);
 
   const table = useReactTable({
     data,
@@ -248,41 +309,157 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      <div className="flex items-center justify-between py-4">
         <Input
-          placeholder="Filter transactions..."
+          placeholder="Search transactions..."
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn("name")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        
+        <div className="flex items-center gap-2">
+          {/* Sort Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <SortAsc className="mr-2 h-4 w-4" />
+                Sort
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Sort by</Label>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select field to sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="transactionDate">Transaction Date</SelectItem>
+                      <SelectItem value="type">Type</SelectItem>
+                      <SelectItem value="category">Category</SelectItem>
+                      <SelectItem value="amount">Amount</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Order</Label>
+                  <Select value={sortOrder} onValueChange={(value: "asc" | "desc") => setSortOrder(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="asc">Ascending</SelectItem>
+                      <SelectItem value="desc">Descending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <Separator />
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSortBy("");
+                    setSortOrder("desc");
+                  }}
+                  className="w-full"
+                >
+                  Clear Sort
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Filter Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Date Range</Label>
+                  <DatePickerWithRange />
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Categories</Label>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                    {allCategories.map((category) => (
+                      <div key={category} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`category-${category}`}
+                          checked={selectedCategories.includes(category)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCategories([...selectedCategories, category]);
+                            } else {
+                              setSelectedCategories(selectedCategories.filter(c => c !== category));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`category-${category}`} className="text-sm">
+                          {category}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Tags</Label>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                    {allTags.map((tag) => (
+                      <div key={tag} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`tag-${tag}`}
+                          checked={selectedTags.includes(tag)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedTags([...selectedTags, tag]);
+                            } else {
+                              setSelectedTags(selectedTags.filter(t => t !== tag));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`tag-${tag}`} className="text-sm">
+                          {tag}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedCategories([]);
+                    setSelectedTags([]);
+                    setDateRange({});
+                  }}
+                  className="w-full"
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>
@@ -334,28 +511,56 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
+      <div className="flex items-center justify-between py-4">
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
+        
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="rows-per-page" className="text-sm font-medium">
+              Rows per page
+            </Label>
+            <Select
+              value={`${table.getState().pagination.pageSize}`}
+              onValueChange={(value) => {
+                table.setPageSize(Number(value));
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px]" id="rows-per-page">
+                <SelectValue placeholder={table.getState().pagination.pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <div className="text-sm font-medium">
+              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
     </div>
