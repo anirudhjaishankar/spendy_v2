@@ -4,6 +4,8 @@ import {
   IconLogout,
   IconNotification,
   IconUserCircle,
+  IconMoon,
+  IconSun,
 } from "@tabler/icons-react"
 
 import {
@@ -26,6 +28,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useTheme, useSettingsStore } from "@/store/settings-store"
 
 export function NavUser({
   user,
@@ -37,6 +40,9 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const theme = useTheme()
+  const toggleTheme = useSettingsStore((state) => state.toggleTheme)
+
 
   return (
     <SidebarMenu>
@@ -93,6 +99,10 @@ export function NavUser({
               <DropdownMenuItem>
                 <IconNotification />
                 Notifications
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={toggleTheme}>
+                {theme === "dark" ? <IconSun /> : <IconMoon />}
+                {theme === "dark" ? "Light mode" : "Dark mode"}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
