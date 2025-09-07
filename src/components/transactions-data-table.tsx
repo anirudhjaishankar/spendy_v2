@@ -314,26 +314,65 @@ export function TransactionsDataTable() {
     }
   }, [sortBy, sortOrder]);
 
-  // Custom filtering logic for multi-field search
+  // Custom filtering logic for search and filters
   const filteredData = React.useMemo(() => {
-    if (!search.trim()) return data;
-    
-    const searchLower = search.toLowerCase();
-    return data.filter((transaction) => {
-      // Search in name
-      const nameMatch = transaction.name.toLowerCase().includes(searchLower);
-      
-      // Search in category
-      const categoryMatch = transaction.category.toLowerCase().includes(searchLower);
-      
-      // Search in tags
-      const tagsMatch = transaction.tags.some(tag => 
-        tag.toLowerCase().includes(searchLower)
+    let filtered = data;
+
+    // Apply search filter
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter((transaction) => {
+        // Search in name
+        const nameMatch = transaction.name.toLowerCase().includes(searchLower);
+        
+        // Search in category
+        const categoryMatch = transaction.category.toLowerCase().includes(searchLower);
+        
+        // Search in tags
+        const tagsMatch = transaction.tags.some(tag => 
+          tag.toLowerCase().includes(searchLower)
+        );
+        
+        return nameMatch || categoryMatch || tagsMatch;
+      });
+    }
+
+    // Apply date range filter
+    if (dateRange.from || dateRange.to) {
+      filtered = filtered.filter((transaction) => {
+        const transactionDate = new Date(transaction.transactionDate);
+        
+        if (dateRange.from && dateRange.to) {
+          // Both dates selected - check if transaction is within range
+          return transactionDate >= dateRange.from && transactionDate <= dateRange.to;
+        } else if (dateRange.from) {
+          // Only from date selected - check if transaction is after or on from date
+          return transactionDate >= dateRange.from;
+        } else if (dateRange.to) {
+          // Only to date selected - check if transaction is before or on to date
+          return transactionDate <= dateRange.to;
+        }
+        
+        return true;
+      });
+    }
+
+    // Apply category filter
+    if (selectedCategories.length > 0) {
+      filtered = filtered.filter((transaction) => 
+        selectedCategories.includes(transaction.category)
       );
-      
-      return nameMatch || categoryMatch || tagsMatch;
-    });
-  }, [data, search]);
+    }
+
+    // Apply tags filter
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((transaction) => 
+        transaction.tags.some(tag => selectedTags.includes(tag))
+      );
+    }
+
+    return filtered;
+  }, [data, search, dateRange, selectedCategories, selectedTags]);
 
   const table = useReactTable({
     data: filteredData,
