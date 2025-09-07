@@ -1,6 +1,6 @@
 import "./App.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import Page from "./pages/page";
+import Page from "./pages/homepage";
 
 function App() {
   return (
