@@ -248,10 +248,12 @@ const columns: ColumnDef<Transaction>[] = [
 ];
 
 export function TransactionsDataTable() {
-  // Get transactions and search state from Zustand store
+  // Get transactions, search, and itemsCount state from Zustand store
   const data = useTransactions();
   const search = useTransactionStore((state) => state.search);
   const setSearch = useTransactionStore((state) => state.setSearch);
+  const itemsCount = useTransactionStore((state) => state.itemsCount);
+  const setItemsCount = useTransactionStore((state) => state.setItemsCount);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -321,6 +323,11 @@ export function TransactionsDataTable() {
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    initialState: {
+      pagination: {
+        pageSize: itemsCount,
+      },
+    },
     state: {
       sorting,
       columnFilters,
@@ -328,6 +335,11 @@ export function TransactionsDataTable() {
       rowSelection,
     },
   });
+
+  // Sync table page size with store itemsCount
+  React.useEffect(() => {
+    table.setPageSize(itemsCount);
+  }, [itemsCount, table]);
 
   return (
     <div className="w-full">
@@ -542,9 +554,10 @@ export function TransactionsDataTable() {
               Rows per page
             </Label>
             <Select
-              value={`${table.getState().pagination.pageSize}`}
+              value={`${itemsCount}`}
               onValueChange={(value) => {
-                table.setPageSize(Number(value));
+                const newItemsCount = Number(value);
+                setItemsCount(newItemsCount);
               }}
             >
               <SelectTrigger className="h-8 w-[70px]" id="rows-per-page">
