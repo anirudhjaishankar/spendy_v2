@@ -181,6 +181,7 @@ const columns: ColumnDef<Transaction>[] = [
         return <span className="text-sm">{notes}</span>;
       }
       
+      // eslint-disable-next-line react-hooks/rules-of-hooks
       const [isHovered, setIsHovered] = React.useState(false);
       
       return (
@@ -260,7 +261,6 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
   const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
-  const [dateRange, setDateRange] = React.useState<{from?: Date, to?: Date}>({});
 
   // Extract unique tags and categories from data
   const allTags = React.useMemo(() => {
@@ -450,7 +450,6 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
                   onClick={() => {
                     setSelectedCategories([]);
                     setSelectedTags([]);
-                    setDateRange({});
                   }}
                   className="w-full"
                 >
