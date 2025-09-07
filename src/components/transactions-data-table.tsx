@@ -14,6 +14,7 @@ import {
 import { Filter, MoreHorizontal, SortAsc, SortDesc, ArrowUpDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -267,6 +268,25 @@ export function TransactionsDataTable() {
   // Filter states (sort is now managed by store)
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
+  const [dateRange, setDateRange] = React.useState<{ from?: Date; to?: Date }>({});
+
+  // Calculate active filter count
+  const filterCount = React.useMemo(() => {
+    let count = 0;
+    
+    // Count date range filter
+    if (dateRange.from || dateRange.to) {
+      count += 1;
+    }
+    
+    // Count selected categories
+    count += selectedCategories.length;
+    
+    // Count selected tags
+    count += selectedTags.length;
+    
+    return count;
+  }, [dateRange, selectedCategories, selectedTags]);
 
   // Extract unique tags and categories from data
   const allTags = React.useMemo(() => {
@@ -426,13 +446,22 @@ export function TransactionsDataTable() {
               <Button variant="outline" size="sm">
                 <Filter className="mr-2 h-4 w-4" />
                 Filter
+                {filterCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                    {filterCount}
+                  </Badge>
+                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80" align="end">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Date Range</Label>
-                  <DatePickerWithRange />
+                  <DatePickerWithRange 
+                    from={dateRange.from}
+                    to={dateRange.to}
+                    setRange={setDateRange}
+                  />
                 </div>
                 
                 <Separator />
@@ -495,6 +524,7 @@ export function TransactionsDataTable() {
                   onClick={() => {
                     setSelectedCategories([]);
                     setSelectedTags([]);
+                    setDateRange({});
                   }}
                   className="w-full"
                 >
