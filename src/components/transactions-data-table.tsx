@@ -11,7 +11,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Filter, MoreHorizontal, SortAsc } from "lucide-react";
+import { Filter, MoreHorizontal, SortAsc, SortDesc, ArrowUpDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -248,20 +248,23 @@ const columns: ColumnDef<Transaction>[] = [
 ];
 
 export function TransactionsDataTable() {
-  // Get transactions, search, and itemsCount state from Zustand store
+  // Get transactions, search, sort, and itemsCount state from Zustand store
   const data = useTransactions();
   const search = useTransactionStore((state) => state.search);
   const setSearch = useTransactionStore((state) => state.setSearch);
   const itemsCount = useTransactionStore((state) => state.itemsCount);
   const setItemsCount = useTransactionStore((state) => state.setItemsCount);
+  const sortBy = useTransactionStore((state) => state.sort.sortBy);
+  const sortOrder = useTransactionStore((state) => state.sort.sortOrder);
+  const setSortBy = useTransactionStore((state) => state.setSortBy);
+  const setSortOrder = useTransactionStore((state) => state.setSortOrder);
+  const clearSort = useTransactionStore((state) => state.clearSort);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   
-  // Sort and Filter states
-  const [sortBy, setSortBy] = React.useState<string>("");
-  const [sortOrder, setSortOrder] = React.useState<"asc" | "desc">("desc");
+  // Filter states (sort is now managed by store)
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
 
@@ -356,8 +359,20 @@ export function TransactionsDataTable() {
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm">
-                <SortAsc className="mr-2 h-4 w-4" />
-                Sort
+                {sortOrder === "asc" ? (
+                  <SortAsc className="mr-2 h-4 w-4" />
+                ) : sortOrder === "desc" ? (
+                  <SortDesc className="mr-2 h-4 w-4" />
+                ) : (
+                  <ArrowUpDown className="mr-2 h-4 w-4" />
+                )}
+                {sortBy ? (
+                  <span className="capitalize">
+                    Sort by {sortBy === "transactionDate" ? "Date" : sortBy}
+                  </span>
+                ) : (
+                  "Sort"
+                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80" align="end">
@@ -369,6 +384,7 @@ export function TransactionsDataTable() {
                       <SelectValue placeholder="Select field to sort by" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="name">Name</SelectItem>
                       <SelectItem value="transactionDate">Transaction Date</SelectItem>
                       <SelectItem value="type">Type</SelectItem>
                       <SelectItem value="category">Category</SelectItem>
@@ -395,13 +411,10 @@ export function TransactionsDataTable() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setSortBy("");
-                    setSortOrder("desc");
-                  }}
+                  onClick={clearSort}
                   className="w-full"
                 >
-                  Clear Sort
+                  Reset to Default
                 </Button>
               </div>
             </PopoverContent>

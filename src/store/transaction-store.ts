@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Transaction } from '@/types/transaction';
+import seedData from '@/data/seed-data.json';
 
 interface FilterState {
   dateRange: {
@@ -57,13 +58,22 @@ const initialFilterState: FilterState = {
 };
 
 const initialSortState: SortState = {
-  sortBy: '',
-  sortOrder: 'desc',
+  sortBy: 'name',
+  sortOrder: 'asc',
 };
 
+// Convert seed data to proper Transaction format
+const seedTransactions: Transaction[] = seedData.map(item => ({
+  ...item,
+  type: item.type as "income" | "expense",
+  transactionDate: new Date(item.transactionDate),
+  createdAt: new Date(item.createdAt),
+  updatedAt: new Date(item.updatedAt),
+}));
+
 export const useTransactionStore = create<TransactionStore>((set) => ({
-  // Initial state
-  transactions: [],
+  // Initial state with seed data
+  transactions: seedTransactions,
   filter: initialFilterState,
   sort: initialSortState,
   itemsCount: 25,
