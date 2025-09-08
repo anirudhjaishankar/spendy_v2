@@ -11,7 +11,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Filter, MoreHorizontal, SortAsc, SortDesc, ArrowUpDown } from "lucide-react";
+import { Filter, MoreHorizontal, SortAsc, SortDesc, ArrowUpDown, Edit, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +20,18 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -51,7 +59,11 @@ import { Transaction } from "@/types/transaction";
 import { DatePickerWithRange } from "@/components/date-range-picker";
 import { useTransactions, useTransactionStore } from "@/store/transaction-store";
 
-const columns: ColumnDef<Transaction>[] = [
+const createColumns = (actions: {
+  deleteTransaction: (id: string) => void;
+  updateTransaction: (id: string, data: Partial<Transaction>) => void;
+  setDeleteDialog: (transaction: Transaction | null) => void;
+}): ColumnDef<Transaction>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -220,6 +232,15 @@ const columns: ColumnDef<Transaction>[] = [
     cell: ({ row }) => {
       const transaction = row.original;
 
+      const handleDelete = () => {
+        actions.setDeleteDialog(transaction);
+      };
+
+      const handleEdit = () => {
+        // TODO: Implement edit functionality
+        console.log('Edit transaction:', transaction.id);
+      };
+
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -229,16 +250,15 @@ const columns: ColumnDef<Transaction>[] = [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(transaction.id)}
-            >
-              Copy transaction ID
+            <DropdownMenuItem onClick={handleEdit}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit transaction
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View details</DropdownMenuItem>
-            <DropdownMenuItem>Edit transaction</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem 
+              className="text-destructive focus:text-destructive"
+              onClick={handleDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete transaction
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -260,6 +280,23 @@ export function TransactionsDataTable() {
   const setSortBy = useTransactionStore((state) => state.setSortBy);
   const setSortOrder = useTransactionStore((state) => state.setSortOrder);
   const clearSort = useTransactionStore((state) => state.clearSort);
+  
+  // Get all transaction actions that might be needed in columns
+  const deleteTransaction = useTransactionStore((state) => state.deleteTransaction);
+  const updateTransaction = useTransactionStore((state) => state.updateTransaction);
+  
+  // Delete dialog state
+  const [deleteDialog, setDeleteDialog] = React.useState<Transaction | null>(null);
+
+  // Create columns with all transaction actions
+  // Note: All functions (deleteTransaction, updateTransaction, setDeleteDialog) are stable,
+  // so we don't need useMemo here. This prevents infinite re-render loops.
+  const transactionActions = {
+    deleteTransaction,
+    updateTransaction,
+    setDeleteDialog,
+  };
+  const columns = createColumns(transactionActions);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -677,6 +714,75 @@ export function TransactionsDataTable() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Are you sure you want to delete this transaction? This action cannot be undone.</p>
+                
+                {deleteDialog && (
+                  <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="font-medium text-muted-foreground">Name:</span>
+                      <span className="font-medium">{deleteDialog.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-muted-foreground">Amount:</span>
+                      <span className={`font-medium ${
+                        deleteDialog.type === "income" 
+                          ? "text-green-600 dark:text-green-400" 
+                          : "text-red-600 dark:text-red-400"
+                      }`}>
+                        {deleteDialog.type === "income" ? "+" : "-"}
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(deleteDialog.amount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-muted-foreground">Type:</span>
+                      <span className={`capitalize px-2 py-1 rounded-full text-xs font-medium ${
+                        deleteDialog.type === "income"
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                      }`}>
+                        {deleteDialog.type}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-muted-foreground">Category:</span>
+                      <span className="font-medium capitalize">{deleteDialog.category}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-muted-foreground">Date:</span>
+                      <span className="font-medium">{deleteDialog.transactionDate.toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deleteDialog) {
+                  deleteTransaction(deleteDialog.id);
+                  setDeleteDialog(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Transaction
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
